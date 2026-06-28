@@ -3,106 +3,115 @@ import axios from "axios";
 import "./App.css";
 
 function App() {
-const [form, setForm] = useState({
-name: "",
-email: "",
-technology: "",
-});
+  const API = "http://localhost:5000/api/users";
 
-const [users, setUsers] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [search, setSearch] = useState("");
 
-const handleChange = (e) => {
-setForm({
-...form,
-[e.target.name]: e.target.value,
-});
-};
-
-const fetchUsers = async () => {
-try {
-const res = await axios.get("http://localhost:5000/api/users");
-setUsers(res.data);
-} catch (error) {
-console.log(error);
-}
-};
-
-const submitForm = async (e) => {
-e.preventDefault();
-
-
-try {
-  await axios.post("http://localhost:5000/api/users", form);
-
-  setForm({
+  const [form, setForm] = useState({
     name: "",
     email: "",
     technology: "",
   });
 
-  fetchUsers();
-} catch (error) {
-  console.log(error);
-  alert("Something went wrong");
-}
+  const [editId, setEditId] = useState(null);
 
+  const getUsers = async () => {
+    const res = await axios.get(API);
+    setUsers(res.data);
+  };
 
-};
+  useEffect(() => {
+    getUsers();
+  }, []);
 
-useEffect(() => {
-fetchUsers();
-}, []);
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
 
-return ( <div className="container"> <div className="form-card"> <h1>Internship Registration Form</h1>
+  const submitForm = async (e) => {
+    e.preventDefault();
 
+    if (editId) {
+      await axios.put(`${API}/${editId}`, form);
+      setEditId(null);
+    } else {
+      await axios.post(API, form);
+    }
 
-    <form onSubmit={submitForm}>
-      <input
-        type="text"
-        name="name"
-        placeholder="Enter Full Name"
-        value={form.name}
-        onChange={handleChange}
-        required
-      />
+    setForm({ name: "", email: "", technology: "" });
+    getUsers();
+  };
 
-      <input
-        type="email"
-        name="email"
-        placeholder="Enter Email"
-        value={form.email}
-        onChange={handleChange}
-        required
-      />
+  const deleteUser = async (id) => {
+    await axios.delete(`${API}/${id}`);
+    getUsers();
+  };
 
-      <input
-        type="text"
-        name="technology"
-        placeholder="Enter Technology"
-        value={form.technology}
-        onChange={handleChange}
-        required
-      />
+  const editUser = (user) => {
+    setForm({
+      name: user.name,
+      email: user.email,
+      technology: user.technology,
+    });
+    setEditId(user._id);
+  };
 
-      <button type="submit">Register Now</button>
-    </form>
-  </div>
+  const filteredUsers = users.filter((u) =>
+    u.name.toLowerCase().includes(search.toLowerCase())
+  );
 
-  <div className="users-section">
-    <h2>Registered Candidates</h2>
+  return (
+    <div className="app">
 
-    {users.map((user) => (
-      <div className="user-card" key={user._id}>
-        <h3>{user.name}</h3>
-        <p>{user.email}</p>
-        <span>{user.technology}</span>
+      {/* LEFT PANEL */}
+      <div className="panel left">
+        <h2>Internship Dashboard</h2>
+        <p>{editId ? "Update Candidate" : "Add New Candidate"}</p>
+
+        <form onSubmit={submitForm}>
+          <input name="name" placeholder="Full Name" value={form.name} onChange={handleChange} />
+          <input name="email" placeholder="Email Address" value={form.email} onChange={handleChange} />
+          <input name="technology" placeholder="Technology" value={form.technology} onChange={handleChange} />
+
+          <button>{editId ? "Update" : "Register"}</button>
+        </form>
       </div>
-    ))}
-  </div>
-</div>
 
+      {/* RIGHT PANEL */}
+      <div className="panel right">
+        <div className="top">
+          <h2>Registered Interns</h2>
 
-);
+          <input
+            placeholder="Search intern..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+
+        <div className="grid">
+          {filteredUsers.map((u) => (
+            <div className="card" key={u._id}>
+              <div>
+                <h3>{u.name}</h3>
+                <p>{u.email}</p>
+                <span>{u.technology}</span>
+              </div>
+
+              <div className="actions">
+                <button onClick={() => editUser(u)}>Edit</button>
+                <button className="del" onClick={() => deleteUser(u._id)}>
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+      </div>
+    </div>
+  );
 }
 
 export default App;
